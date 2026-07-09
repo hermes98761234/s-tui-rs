@@ -1,5 +1,6 @@
 mod config;
 mod sources;
+mod stress;
 
 use clap::Parser;
 

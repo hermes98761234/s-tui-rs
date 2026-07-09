@@ -1,0 +1,33 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            ext: ""
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add ${{ matrix.target }}
+      - if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: cargo build --release --target ${{ matrix.target }}
+      - name: package
+        shell: bash
+        run: cp "target/${{ matrix.target }}/release/s-tui-rs${{ matrix.ext }}" "s-tui-rs-${{ matrix.target }}${{ matrix.ext }}"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: s-tui-rs-${{ matrix.target }}${{ matrix.ext }}

@@ -45,10 +45,11 @@ append readings to history → render. One-shot modes read once, print, exit —
 
 ## Feature scope (v1)
 
-**In:** temp/freq/util/power/fan monitoring; per-core graphs with 1000-sample history;
-temp-threshold color alerts; sensor show/hide menu; built-in stress (worker count configurable);
+**In:** temp/freq/util/power/fan monitoring; graphs with 1000-sample history (one aggregate
+series per sensor — avg util / max temp; per-core values shown in the summary sidebar);
+temp-threshold color alerts; sensor show/hide toggles (number keys); built-in stress;
 external stress/stress-ng passthrough; monitor/stress mode toggle; CSV logging; `--json` and
-`--terminal` one-shot output; `--refresh-rate`, `--t-thresh`, `--version`, `--debug` flags;
+`--terminal` one-shot output; `--refresh-rate`, `--t-thresh`, `--version` flags;
 config persistence; clean shutdown on q/Ctrl-C/SIGTERM that kills stress workers/children first.
 
 **Deferred (YAGNI for v1, documented here so they aren't rediscovered):** MSR throttle-reason

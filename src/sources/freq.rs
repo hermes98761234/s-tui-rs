@@ -44,6 +44,7 @@ impl Source for FreqSource {
     }
     fn read(&mut self) -> Vec<Reading> {
         self.sys.refresh_cpu();
+        #[allow(unused_mut)]
         let mut v: Vec<Reading> = self
             .sys
             .cpus()

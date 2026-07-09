@@ -1,4 +1,5 @@
 mod config;
+mod sources;
 
 use clap::Parser;
 
@@ -38,7 +39,9 @@ fn main() -> anyhow::Result<()> {
     if let Some(t) = cli.t_thresh {
         cfg.temp_threshold = t;
     }
-    // ponytail: modes are wired in later tasks; scaffold just proves CLI + config compile
-    println!("s-tui-rs scaffold OK (refresh {}s)", cfg.refresh_rate);
+    let mut srcs = sources::all_sources(cfg.temp_threshold);
+    for s in srcs.iter_mut() {
+        println!("{} ({}): {} readings", s.name(), s.unit(), s.read().len());
+    }
     Ok(())
 }

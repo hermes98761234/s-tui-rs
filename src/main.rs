@@ -1,10 +1,13 @@
+mod app;
 mod config;
-#[allow(dead_code)]
 mod export;
 mod sources;
 mod stress;
+mod ui;
 
 use clap::Parser;
+use config::Config;
+use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -33,6 +36,15 @@ pub struct Cli {
     pub t_thresh: Option<f32>,
 }
 
+struct TermGuard;
+
+impl Drop for TermGuard {
+    fn drop(&mut self) {
+        let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::LeaveAlternateScreen);
+        let _ = crossterm::terminal::disable_raw_mode();
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let mut cfg = config::load();
@@ -57,7 +69,54 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // ponytail: TUI mode lands in the next task
-    println!("TUI mode not implemented yet; use --json or --terminal");
+    run_tui(&cli, cfg)
+}
+
+fn run_tui(cli: &Cli, cfg: Config) -> anyhow::Result<()> {
+    let mut app = app::App::new(cfg);
+    let mut csv = if cli.csv {
+        export::CsvLogger::new(&cli.csv_file).ok()
+    } else {
+        None
+    };
+
+    crossterm::terminal::enable_raw_mode()?;
+    crossterm::execute!(std::io::stdout(), crossterm::terminal::EnterAlternateScreen)?;
+    let _guard = TermGuard; // restores the terminal even on panic/early return
+    let mut terminal =
+        ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(std::io::stdout()))?;
+
+    let tick = std::time::Duration::from_secs_f64(app.cfg.refresh_rate.max(0.1));
+    let mut last = std::time::Instant::now() - tick; // fire the first tick immediately
+    while !app.quit {
+        if last.elapsed() >= tick {
+            let snaps = app.tick();
+            if let Some(c) = csv.as_mut() {
+                c.log(&snaps);
+            }
+            last = std::time::Instant::now();
+        }
+        terminal.draw(|f| ui::draw(f, &app))?;
+        let wait = tick
+            .saturating_sub(last.elapsed())
+            .min(std::time::Duration::from_millis(250));
+        if crossterm::event::poll(wait)? {
+            if let Event::Key(k) = crossterm::event::read()? {
+                if k.kind == KeyEventKind::Press {
+                    match k.code {
+                        KeyCode::Char('c') if k.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.quit = true;
+                        }
+                        KeyCode::Char(c) => app.on_key(c),
+                        KeyCode::Esc => app.quit = true,
+                        KeyCode::F(1) => app.show_help = !app.show_help,
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+    app.stress.stop();
+    config::save(&app.cfg);
     Ok(())
 }

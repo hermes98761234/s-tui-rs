@@ -32,7 +32,6 @@ pub fn load() -> Config {
         .unwrap_or_default()
 }
 
-#[expect(dead_code)]
 pub fn save(cfg: &Config) {
     if let Some(p) = path() {
         if let Some(dir) = p.parent() {

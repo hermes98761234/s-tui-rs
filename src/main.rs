@@ -1,4 +1,6 @@
 mod config;
+#[allow(dead_code)]
+mod export;
 mod sources;
 mod stress;
 
@@ -40,9 +42,22 @@ fn main() -> anyhow::Result<()> {
     if let Some(t) = cli.t_thresh {
         cfg.temp_threshold = t;
     }
-    let mut srcs = sources::all_sources(cfg.temp_threshold);
-    for s in srcs.iter_mut() {
-        println!("{} ({}): {} readings", s.name(), s.unit(), s.read().len());
+
+    if cli.json || cli.terminal {
+        let mut srcs = sources::all_sources(cfg.temp_threshold);
+        // first read primes cpu_usage and RAPL deltas; second read is the real sample
+        let _ = export::take(&mut srcs);
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        let snaps = export::take(&mut srcs);
+        if cli.json {
+            println!("{}", export::to_json(&snaps));
+        } else {
+            println!("{}", export::to_terminal(&snaps));
+        }
+        return Ok(());
     }
+
+    // ponytail: TUI mode lands in the next task
+    println!("TUI mode not implemented yet; use --json or --terminal");
     Ok(())
 }
